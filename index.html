@@ -1,0 +1,770 @@
+```html
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Al-Qada School League</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f1f4f8;
+      color: #222;
+    }
+
+    header {
+      background: linear-gradient(135deg, #123b5d, #087f5b);
+      color: white;
+      text-align: center;
+      padding: 25px 15px;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 27px;
+    }
+
+    header p {
+      margin: 0;
+      opacity: .9;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 15px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 15px;
+      padding: 18px;
+      margin: 18px 0;
+      box-shadow: 0 3px 15px #00000012;
+    }
+
+    h2 {
+      color: #123b5d;
+      margin-top: 0;
+    }
+
+    h3 {
+      color: #087f5b;
+      margin-top: 25px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px 4px;
+      text-align: center;
+    }
+
+    th {
+      background: #123b5d;
+      color: white;
+    }
+
+    .qualified {
+      background: #d8f3dc;
+      font-weight: bold;
+    }
+
+    .match {
+      display: grid;
+      grid-template-columns: 1fr 55px 20px 55px 1fr;
+      align-items: center;
+      gap: 5px;
+      padding: 12px;
+      margin: 9px 0;
+      background: #f7f8fa;
+      border-radius: 10px;
+    }
+
+    .team {
+      font-weight: bold;
+    }
+
+    .score {
+      width: 50px;
+      padding: 9px 3px;
+      text-align: center;
+      font-size: 18px;
+      border: 1px solid #bbb;
+      border-radius: 7px;
+    }
+
+    .vs {
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .login-box {
+      background: white;
+      border-radius: 15px;
+      padding: 18px;
+      margin: 18px 0;
+      box-shadow: 0 3px 15px #00000012;
+    }
+
+    .login-box input {
+      width: 100%;
+      padding: 12px;
+      margin: 6px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 11px 18px;
+      background: #087f5b;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+      margin-top: 8px;
+    }
+
+    button.logout {
+      background: #c0392b;
+    }
+
+    .status {
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .online {
+      background: #d8f3dc;
+      color: #176b37;
+    }
+
+    .offline {
+      background: #ffe0e0;
+      color: #9b2226;
+    }
+
+    .admin {
+      border: 2px solid #087f5b;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .note {
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+    }
+
+    @media(max-width: 500px) {
+      .match {
+        grid-template-columns: 1fr 45px 15px 45px 1fr;
+        font-size: 14px;
+      }
+
+      table {
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 7px 2px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>🏆 Al-Qada School League</h1>
+  <p>بطولة القادة المدرسية</p>
+</header>
+
+<div class="container">
+
+  <!-- حالة الاتصال -->
+  <div id="status" class="status online">
+    🟢 متصل — النتائج تتحدث تلقائيًا
+  </div>
+
+  <!-- تسجيل دخول المسؤول -->
+  <div id="loginBox" class="login-box">
+    <h2>🔐 دخول المسؤول</h2>
+
+    <input
+      id="email"
+      type="email"
+      placeholder="البريد الإلكتروني"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="كلمة المرور"
+    >
+
+    <button onclick="login()">دخول</button>
+
+    <div id="loginMessage"></div>
+  </div>
+
+  <!-- لوحة المسؤول -->
+  <div id="adminBox" class="card admin hidden">
+    <h2>⚙️ لوحة التحكم</h2>
+    <p id="adminName"></p>
+    <button class="logout" onclick="logout()">تسجيل الخروج</button>
+    <p class="note">أدخل أهداف كل مباراة، وسيتم حفظها فورًا وتحديث الجدول عند الجميع.</p>
+  </div>
+
+  <!-- البطولة -->
+  <div id="groups"></div>
+
+</div>
+
+<script type="module">
+
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  onSnapshot,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+
+/* =========================
+   Firebase
+========================= */
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDzPiwtiQeiGUhZzIOd9IbH6JrCNXX1Ttc",
+  authDomain: "al-qada-school-league.firebaseapp.com",
+  projectId: "al-qada-school-league",
+  storageBucket: "al-qada-school-league.firebasestorage.app",
+  messagingSenderId: "377096511764",
+  appId: "1:377096511764:web:9ad05866fc55195ee6e201"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+
+/* =========================
+   الفرق والمباريات
+========================= */
+
+const groups = {
+  "المجموعة A": [
+    "النسور",
+    "الأسود",
+    "الذهب"
+  ],
+
+  "المجموعة B": [
+    "البراجيل",
+    "صلي على النبي",
+    "الريمونتادا"
+  ]
+};
+
+const matches = {
+  "المجموعة A": [
+    ["النسور", "الأسود"],
+    ["الذهب", "النسور"],
+    ["الأسود", "الذهب"]
+  ],
+
+  "المجموعة B": [
+    ["البراجيل", "صلي على النبي"],
+    ["الريمونتادا", "البراجيل"],
+    ["صلي على النبي", "الريمونتادا"]
+  ]
+};
+
+
+/* =========================
+   النتائج الحالية
+========================= */
+
+let results = {};
+
+const resultsRef = doc(db, "results", "league");
+
+
+/* =========================
+   متابعة النتائج لحظيًا
+========================= */
+
+onSnapshot(resultsRef, (snapshot) => {
+
+  if (snapshot.exists()) {
+    results = snapshot.data();
+  } else {
+    results = {};
+  }
+
+  render();
+
+}, (error) => {
+
+  console.error(error);
+
+  document.getElementById("status").textContent =
+    "🔴 حدث خطأ في الاتصال بقاعدة البيانات";
+
+  document.getElementById("status").className =
+    "status offline";
+
+});
+
+
+/* =========================
+   تسجيل الدخول
+========================= */
+
+window.login = async function() {
+
+  const email =
+    document.getElementById("email").value.trim();
+
+  const password =
+    document.getElementById("password").value;
+
+  const message =
+    document.getElementById("loginMessage");
+
+  if (!email || !password) {
+    message.innerHTML =
+      "<p style='color:red'>اكتب البريد الإلكتروني وكلمة المرور.</p>";
+    return;
+  }
+
+  try {
+
+    await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    message.innerHTML = "";
+
+  } catch (error) {
+
+    console.error(error);
+
+    message.innerHTML =
+      "<p style='color:red'>البريد الإلكتروني أو كلمة المرور غير صحيحة.</p>";
+  }
+};
+
+
+/* =========================
+   تسجيل الخروج
+========================= */
+
+window.logout = async function() {
+  await signOut(auth);
+};
+
+
+/* =========================
+   حالة المستخدم
+========================= */
+
+onAuthStateChanged(auth, (user) => {
+
+  const loginBox =
+    document.getElementById("loginBox");
+
+  const adminBox =
+    document.getElementById("adminBox");
+
+  if (user) {
+
+    loginBox.classList.add("hidden");
+    adminBox.classList.remove("hidden");
+
+    document.getElementById("adminName").textContent =
+      "👤 المسؤول: " + user.email;
+
+  } else {
+
+    loginBox.classList.remove("hidden");
+    adminBox.classList.add("hidden");
+
+  }
+
+  render();
+});
+
+
+/* =========================
+   حساب الترتيب
+========================= */
+
+function calculate(groupName) {
+
+  const stats = {};
+
+  groups[groupName].forEach(team => {
+
+    stats[team] = {
+      played: 0,
+      win: 0,
+      draw: 0,
+      loss: 0,
+      gf: 0,
+      ga: 0,
+      gd: 0,
+      points: 0
+    };
+
+  });
+
+
+  matches[groupName].forEach((match, index) => {
+
+    const key = groupName + "-" + index;
+
+    const result = results[key];
+
+    if (
+      !result ||
+      result.home === "" ||
+      result.away === "" ||
+      result.home === undefined ||
+      result.away === undefined
+    ) {
+      return;
+    }
+
+    const homeGoals = Number(result.home);
+    const awayGoals = Number(result.away);
+
+    if (
+      isNaN(homeGoals) ||
+      isNaN(awayGoals)
+    ) {
+      return;
+    }
+
+    const home = match[0];
+    const away = match[1];
+
+    stats[home].played++;
+    stats[away].played++;
+
+    stats[home].gf += homeGoals;
+    stats[home].ga += awayGoals;
+
+    stats[away].gf += awayGoals;
+    stats[away].ga += homeGoals;
+
+    if (homeGoals > awayGoals) {
+
+      stats[home].win++;
+      stats[away].loss++;
+      stats[home].points += 3;
+
+    } else if (awayGoals > homeGoals) {
+
+      stats[away].win++;
+      stats[home].loss++;
+      stats[away].points += 3;
+
+    } else {
+
+      stats[home].draw++;
+      stats[away].draw++;
+
+      stats[home].points++;
+      stats[away].points++;
+    }
+
+  });
+
+
+  Object.values(stats).forEach(team => {
+    team.gd = team.gf - team.ga;
+  });
+
+
+  return Object.entries(stats).sort((a, b) => {
+
+    return (
+      b[1].points - a[1].points ||
+      b[1].gd - a[1].gd ||
+      b[1].gf - a[1].gf
+    );
+
+  });
+}
+
+
+/* =========================
+   تحديث النتيجة
+========================= */
+
+window.updateScore = async function(
+  groupName,
+  index,
+  side,
+  value
+) {
+
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("يجب تسجيل الدخول كمسؤول لتعديل النتائج.");
+    render();
+    return;
+  }
+
+  value = value.replace(/[^0-9]/g, "");
+
+  const key = groupName + "-" + index;
+
+  if (!results[key]) {
+    results[key] = {
+      home: "",
+      away: ""
+    };
+  }
+
+  if (side === "home") {
+    results[key].home = value;
+  } else {
+    results[key].away = value;
+  }
+
+  try {
+
+    await setDoc(resultsRef, results);
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert("حدث خطأ أثناء حفظ النتيجة.");
+
+  }
+};
+
+
+/* =========================
+   رسم الصفحة
+========================= */
+
+function render() {
+
+  const container =
+    document.getElementById("groups");
+
+  container.innerHTML = "";
+
+  for (const groupName in groups) {
+
+    const card =
+      document.createElement("div");
+
+    card.className = "card";
+
+    card.innerHTML =
+      `<h2>🏆 ${groupName}</h2>`;
+
+    const sorted =
+      calculate(groupName);
+
+
+    /* جدول الترتيب */
+
+    const table =
+      document.createElement("table");
+
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>الفريق</th>
+          <th>ل</th>
+          <th>ف</th>
+          <th>ت</th>
+          <th>خ</th>
+          <th>له</th>
+          <th>عليه</th>
+          <th>فارق</th>
+          <th>ن</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+
+    const tbody =
+      table.querySelector("tbody");
+
+
+    sorted.forEach(([team, stat], index) => {
+
+      const tr =
+        document.createElement("tr");
+
+      if (index < 2) {
+        tr.className = "qualified";
+      }
+
+      tr.innerHTML = `
+        <td>${index + 1}</td>
+        <td>
+          ${team}
+          ${index < 2 ? " ✅" : ""}
+        </td>
+        <td>${stat.played}</td>
+        <td>${stat.win}</td>
+        <td>${stat.draw}</td>
+        <td>${stat.loss}</td>
+        <td>${stat.gf}</td>
+        <td>${stat.ga}</td>
+        <td>${stat.gd}</td>
+        <td><strong>${stat.points}</strong></td>
+      `;
+
+      tbody.appendChild(tr);
+
+    });
+
+    card.appendChild(table);
+
+
+    /* المباريات */
+
+    const title =
+      document.createElement("h3");
+
+    title.textContent =
+      "⚽ المباريات";
+
+    card.appendChild(title);
+
+
+    matches[groupName].forEach((match, index) => {
+
+      const key =
+        groupName + "-" + index;
+
+      const saved =
+        results[key] || {
+          home: "",
+          away: ""
+        };
+
+
+      const matchBox =
+        document.createElement("div");
+
+      matchBox.className = "match";
+
+
+      const homeInput =
+        document.createElement("input");
+
+      homeInput.className = "score";
+      homeInput.type = "number";
+      homeInput.min = "0";
+      homeInput.value =
+        saved.home ?? "";
+
+      homeInput.disabled =
+        !auth.currentUser;
+
+      homeInput.addEventListener(
+        "change",
+        () => {
+          updateScore(
+            groupName,
+            index,
+            "home",
+            homeInput.value
+          );
+        }
+      );
+
+
+      const awayInput =
+        document.createElement("input");
+
+      awayInput.className = "score";
+      awayInput.type = "number";
+      awayInput.min = "0";
+      awayInput.value =
+        saved.away ?? "";
+
+      awayInput.disabled =
+        !auth.currentUser;
+
+      awayInput.addEventListener(
+        "change",
+        () => {
+          updateScore(
+            groupName,
+            index,
+            "away",
+            awayInput.value
+          );
+        }
+      );
+
+
+      matchBox.innerHTML = `
+        <div class="team">${match[0]}</div>
+        <div></div>
+        <div class="vs">-</div>
+        <div></div>
+        <div class="team">${match[1]}</div>
+      `;
+
+      matchBox.children[1].replaceWith(homeInput);
+      matchBox.children[3].replaceWith(awayInput);
+
+      card.appendChild(matchBox);
+
+    });
+
+
+    container.appendChild(card);
+
+  }
+}
+
+</script>
+
+</body>
+</html>
+```
